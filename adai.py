@@ -3,21 +3,26 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import os
-
+import random
 load_dotenv()
 
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True   # add this line
 bot = commands.Bot(command_prefix="!", intents=intents)
-
+#---------------------------------------------------------
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pongg!!")
 
 NOT_IN_UNI_ROLE = "Outsider"
 SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
+#---------------------------------------------------------
 
+
+
+
+#---------------------------------------------------------
 @bot.event
 async def on_member_update(before, after):
     role_names = [r.name for r in after.roles]
@@ -27,6 +32,10 @@ async def on_member_update(before, after):
         if roles_to_remove:
             await after.remove_roles(*roles_to_remove)
             print(f"Removed {[r.name for r in roles_to_remove]} from {after.name}")
+#---------------------------------------------------------
+
+
+#---------------------------------------------------------
 
 @bot.tree.command(name="help", description="Show what ADAi can do")
 async def help_slash(interaction: discord.Interaction):
@@ -42,6 +51,49 @@ async def help_slash(interaction: discord.Interaction):
     embed.add_field(name="!choose <option1, option2, ...>", value="Let the bot decide", inline=False)
     
     await interaction.response.send_message(embed=embed)
+#---------------------------------------------------------
+
+
+
+#---------------------------------------------------------
+EIGHT_BALL_RESPONSES = [
+    "It is certain.",
+    "Without a doubt.",
+    "Yes, definitely.",
+    "You may rely on it.",
+    "As I see it, yes.",
+    "Most likely.",
+    "Outlook good.",
+    "Signs point to yes.",
+    "Reply hazy, try again.",
+    "Ask again later.",
+    "Better not tell you now.",
+    "Cannot predict now.",
+    "Concentrate and ask again.",
+    "Don't count on it.",
+    "My reply is no.",
+    "My sources say no.",
+    "Outlook not so good.",
+    "Very doubtful."
+]
+
+@bot.command(name="8ball")
+async def eightball(ctx, *, question=None):
+    if question is None:
+        await ctx.send("You need to ask a question! e.g. `!8ball will i pass this exam`")
+        return
+    answer = random.choice(EIGHT_BALL_RESPONSES)
+    await ctx.send(f"🎱 {answer}")
+#---------------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 #GUILD_ID = discord.Object(id=1411110776827019337)
 
