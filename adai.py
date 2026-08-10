@@ -1,4 +1,8 @@
 # adai.py
+
+
+
+#---------------------------------------------------------
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -11,6 +15,8 @@ intents.members = True
 intents.message_content = True   # add this line
 bot = commands.Bot(command_prefix="!", intents=intents)
 #---------------------------------------------------------
+
+#-------------------------PING--------------------------------
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pongg!!")
@@ -22,7 +28,7 @@ SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
 
 
 
-#---------------------------------------------------------
+#-------------------------MEMBER UPDATE-------------------------------
 @bot.event
 async def on_member_update(before, after):
     role_names = [r.name for r in after.roles]
@@ -35,7 +41,7 @@ async def on_member_update(before, after):
 #---------------------------------------------------------
 
 
-#---------------------------------------------------------
+#-------------------------HELP---------------------------------
 
 @bot.tree.command(name="help", description="Show what ADAi can do")
 async def help_slash(interaction: discord.Interaction):
@@ -55,7 +61,7 @@ async def help_slash(interaction: discord.Interaction):
 
 
 
-#---------------------------------------------------------
+#-------------------------8BALL--------------------------------
 EIGHT_BALL_RESPONSES = [
     "It is certain.",
     "Without a doubt.",
@@ -87,9 +93,15 @@ async def eightball(ctx, *, question=None):
 #---------------------------------------------------------
 
 
-
-
-
+#-----------------------RATE----------------------------------
+@bot.command()
+async def rate(ctx, *, thing=None):
+    if thing is None:
+        await ctx.send("Rate what? e.g. `!rate pineapple on pizza`")
+        return
+    score = random.randint(0, 10)
+    await ctx.send(f"📊 **{ctx.author.display_name}** rated **{thing}**: **{score}/10**")
+#---------------------------------------------------------
 
 
 
@@ -97,6 +109,8 @@ async def eightball(ctx, *, question=None):
 
 #GUILD_ID = discord.Object(id=1411110776827019337)
 
+
+#-------------------------READY--------------------------------
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
@@ -106,3 +120,4 @@ async def on_ready():
     except Exception as e:
         print(f"Sync failed: {e}")
 bot.run(os.getenv("DISCORD_TOKEN"))
+#---------------------------------------------------------
