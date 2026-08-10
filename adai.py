@@ -13,7 +13,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send("Ponggg!!")
+    await ctx.send("Pongg!!")
 
 NOT_IN_UNI_ROLE = "Outsider"
 SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
