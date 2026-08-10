@@ -116,10 +116,7 @@ COFFEE_RESPONSES = [
 ]
 
 COFFEE_GIFS = [
-    "https://tenor.com/bZrJq.gif",
-    "https://tenor.com/euAWsTkUIRn.gif",
-    "https://tenor.com/evjOI3xc9jU.gif",
-    "https://tenor.com/beio2.gif"
+    "https://media1.tenor.com/m/Mm3NPYMZDw8AAAAd/tremendo-nervosa.gif",
     # add a few more for variety if you want
 ]
 
