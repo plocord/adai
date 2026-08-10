@@ -133,6 +133,47 @@ async def coffee(ctx):
     await ctx.send(embed=embed)
 #---------------------------------------------------------
 
+#-------------------------CHOOSE--------------------------------
+@bot.command()
+async def choose(ctx, *, options=None):
+    if options is None:
+        await ctx.send("Give me some options! e.g. `!choose pizza, sushi, tacos`")
+        return
+    
+    choices = [opt.strip() for opt in options.split(",") if opt.strip()]
+    
+    if len(choices) < 2:
+        await ctx.send("I need at least 2 options separated by commas! e.g. `!choose pizza, sushi, tacos`")
+        return
+    
+    pick = random.choice(choices)
+    await ctx.send(f"🤔 **{ctx.author.display_name}** asked me to choose between: {', '.join(choices)}\n**I choose:** {pick}")
+#---------------------------------------------------------
+
+#-------------------------CLEAR--------------------------------
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def clear(ctx, amount: int = None):
+    if amount is None:
+        await ctx.send("Specify how many messages to clear! e.g. `!clear 10`")
+        return
+    
+    if amount < 1 or amount > 100:
+        await ctx.send("Please choose a number between 1 and 100.")
+        return
+    
+    deleted = await ctx.channel.purge(limit=amount + 1)  # +1 to include the command message itself
+    confirmation = await ctx.send(f"🧹 Deleted {len(deleted) - 1} messages.")
+    await confirmation.delete(delay=3)  # auto-delete the confirmation after 3 seconds
+
+@clear.error
+async def clear_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Manage Messages** permission to use this command.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Please provide a valid number. e.g. `!clear 10`")
+#---------------------------------------------------------
+
 
 #GUILD_ID = discord.Object(id=1411110776827019337)
 
