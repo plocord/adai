@@ -46,5 +46,10 @@ async def help_slash(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash command(s) globally")
+    except Exception as e:
+        print(f"Sync failed: {e}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
