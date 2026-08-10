@@ -42,25 +42,38 @@ async def on_member_update(before, after):
             print(f"Removed {[r.name for r in roles_to_remove]} from {after.name}")
 #---------------------------------------------------------
 
-
 #-------------------------HELP---------------------------------
+def build_help_embed():
+    embed = discord.Embed(
+        title="ADAi Commands",
+        description="Here's everything I can do:",
+        color=discord.Color.blurple()
+    )
+    embed.add_field(name="🎉 Fun", value=(
+        "`!8ball <question>` — Ask the magic 8-ball\n"
+        "`!rate <thing>` — Get a rating out of 10\n"
+        "`!coffee` — Brew a virtual coffee\n"
+        "`!choose <a, b, c>` — Let the bot decide\n"
+        "`!coinflip` / `!cf` — Flip a coin"
+    ), inline=False)
+    embed.add_field(name="🛡️ Moderation", value=(
+        "`!clear <amount>` — Delete messages (requires Manage Messages)"
+    ), inline=False)
+    embed.add_field(name="⚙️ Utility", value=(
+        "`!ping` — Check if I'm alive\n"
+        "`!help` / `/help` — Show this menu"
+    ), inline=False)
+    embed.set_footer(text="ADAi — ADA University Discord bot")
+    return embed
+
+@bot.command()
+async def help(ctx):
+    await ctx.send(embed=build_help_embed())
 
 @bot.tree.command(name="help", description="Show what ADAi can do")
 async def help_slash(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="ADAi Commands",
-        description="Here's what I can do:",
-        color=discord.Color.blurple()
-    )
-    embed.add_field(name="/help", value="Show this menu", inline=False)
-    embed.add_field(name="!8ball <question>", value="Ask the magic 8-ball", inline=False)
-    embed.add_field(name="!rate <thing>", value="Get a rating out of 10", inline=False)
-    embed.add_field(name="!coffee", value="Brew a virtual coffee", inline=False)
-    embed.add_field(name="!choose <option1, option2, ...>", value="Let the bot decide", inline=False)
-    
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(embed=build_help_embed())
 #---------------------------------------------------------
-
 
 
 #-------------------------8BALL--------------------------------
