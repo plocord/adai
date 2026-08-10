@@ -13,7 +13,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send("Pong!")
+    await ctx.send("Ponggg!!")
 
 NOT_IN_UNI_ROLE = "Outsider"
 SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
@@ -42,7 +42,7 @@ async def help_slash(interaction: discord.Interaction):
     embed.add_field(name="!choose <option1, option2, ...>", value="Let the bot decide", inline=False)
     
     await interaction.response.send_message(embed=embed)
-    
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
