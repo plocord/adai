@@ -43,7 +43,7 @@ async def help_slash(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed)
 
-GUILD_ID = discord.Object(id=YOUR_SERVER_ID_HERE)
+GUILD_ID = discord.Object(id=1411110776827019337)
 
 @bot.event
 async def on_ready():
