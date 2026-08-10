@@ -43,12 +43,13 @@ async def help_slash(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed)
 
-GUILD_ID = discord.Object(id=1411110776827019337)
+GUILD_ID = discord.Object(id=YOUR_SERVER_ID_HERE)
 
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
     try:
+        bot.tree.copy_global_to(guild=GUILD_ID)
         synced = await bot.tree.sync(guild=GUILD_ID)
         print(f"Synced {len(synced)} slash command(s) to guild")
     except Exception as e:
