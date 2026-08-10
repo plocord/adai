@@ -112,8 +112,7 @@ async def coinflip(ctx):
     message = await ctx.send("<a:coinflip:1536412337987391529> Flipping the coin...")
     await asyncio.sleep(2)  # Simulate a delay for suspense
     result = random.choice(["Heads", "Tails"])
-    await ctx.send(f"🪙 **{ctx.author.display_name}** flipped a coin: **{result}**!")
-#---------------------------------------------------------
+    await message.edit(content=f"🪙 **{ctx.author.display_name}** flipped a coin: **{result}**!")#---------------------------------------------------------
 
 #-------------------------COFFEE-----------------------------------
 COFFEE_RESPONSES = [
