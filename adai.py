@@ -8,6 +8,8 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import os
 import random
+import asyncio
+
 load_dotenv()
 
 intents = discord.Intents.default()
@@ -103,6 +105,15 @@ async def rate(ctx, *, thing=None):
     await ctx.send(f"📊 **{ctx.author.display_name}** rated **{thing}**: **{score}/10**")
 #---------------------------------------------------------
 
+
+#-------------------------COINFLIP--------------------------------
+@bot.command(aliases=["cf"])
+async def coinflip(ctx):
+    message = await ctx.send("<a:coinflip:1536412337987391529> Flipping the coin...")
+    await asyncio.sleep(2)  # Simulate a delay for suspense
+    result = random.choice(["Heads", "Tails"])
+    await ctx.send(f"🪙 **{ctx.author.display_name}** flipped a coin: **{result}**!")
+#---------------------------------------------------------
 
 #-------------------------COFFEE-----------------------------------
 COFFEE_RESPONSES = [
