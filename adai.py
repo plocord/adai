@@ -83,7 +83,7 @@ async def eightball(ctx, *, question=None):
         await ctx.send("You need to ask a question! e.g. `!8ball will i pass this exam`")
         return
     answer = random.choice(EIGHT_BALL_RESPONSES)
-    await ctx.send(f"🎱 {answer}")
+    await ctx.send(f"🎱 **{ctx.author.display_name} asked:** {question}\n**Answer:** {answer}")
 #---------------------------------------------------------
 
 
