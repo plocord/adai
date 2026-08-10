@@ -104,7 +104,32 @@ async def rate(ctx, *, thing=None):
 #---------------------------------------------------------
 
 
+#-------------------------COFFEE-----------------------------------
+COFFEE_RESPONSES = [
+    "☕ Here's your coffee, freshly brewed!",
+    "☕ One espresso shot, coming right up!",
+    "☕ Brewing... done! Extra hot, just how you like it.",
+    "☕ Here's a latte with a little heart drawn on top.",
+    "☕ Watch out, this one's steaming hot!",
+    "☕ Cold brew for you, since it's probably too hot outside anyway.",
+    "☕ Here's your coffee. No sugar, just like your code reviews."
+]
 
+COFFEE_GIFS = [
+    "https://tenor.com/bZrJq.gif",
+    "https://tenor.com/euAWsTkUIRn.gif",
+    "https://tenor.com/evjOI3xc9jU.gif",
+    "https://tenor.com/beio2.gif"
+    # add a few more for variety if you want
+]
+
+@bot.command()
+async def coffee(ctx):
+    response = random.choice(COFFEE_RESPONSES)
+    embed = discord.Embed(description=f"{response}\n*Served to {ctx.author.display_name}*")
+    embed.set_image(url=random.choice(COFFEE_GIFS))
+    await ctx.send(embed=embed)
+#---------------------------------------------------------
 
 
 #GUILD_ID = discord.Object(id=1411110776827019337)
