@@ -58,7 +58,9 @@ def build_help_embed():
         "`!rate <thing>` — Get a rating out of 10\n"
         "`!coffee` — Brew a virtual coffee\n"
         "`!choose <a, b, c>` — Let the bot decide\n"
-        "`!coinflip` / `!cf` — Flip a coin"
+        "`!coinflip` / `!cf` — Flip a coin" \n"
+        "`!quote` — Turn a message into a quote (reply to a message with this command)"
+
     ), inline=False)
     embed.add_field(name="🛡️ Moderation", value=(
         "`!clear <amount>` — Delete messages (requires Manage Messages)"
