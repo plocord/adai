@@ -97,29 +97,33 @@ async def quote(ctx):
         await ctx.send("That message has no text to quote!")
         return
     
-    # Download the author's avatar
     avatar_url = author.display_avatar.replace(size=512).url
     async with aiohttp.ClientSession() as session:
         async with session.get(avatar_url) as resp:
             avatar_bytes = await resp.read()
     
-    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")  # grayscale
-    avatar = avatar.resize((400, 400))
+    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")
+    avatar = avatar.resize((400, 400)).convert("RGB")
     
-    # Create canvas: avatar on left, black space with text on right
+    # Build a horizontal fade mask: opaque on the left, transparent on the right
+    fade_width = 150  # how wide the fade transition is
+    mask = Image.new("L", (400, 400), 255)
+    mask_draw = ImageDraw.Draw(mask)
+    for x in range(400 - fade_width, 400):
+        opacity = int(255 * (1 - (x - (400 - fade_width)) / fade_width))
+        mask_draw.line([(x, 0), (x, 400)], fill=opacity)
+    
     canvas = Image.new("RGB", (900, 400), color=(10, 10, 10))
-    canvas.paste(avatar, (0, 0))
+    black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
+    
+    # Composite avatar onto black using the fade mask
+    faded_avatar = Image.composite(avatar, black_bg, mask)
+    canvas.paste(faded_avatar, (0, 0))
     
     draw = ImageDraw.Draw(canvas)
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+    small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
     
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-    except:
-        font = ImageFont.load_default()
-        small_font = font
-    
-    # Simple word-wrap for the quote text
     def wrap_text(text, font, max_width, draw):
         words = text.split()
         lines = []
