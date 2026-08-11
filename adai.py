@@ -67,7 +67,8 @@ def build_help_embed():
     ), inline=False)
     embed.add_field(name="⚙️ Utility", value=(
         "`!ping` — Check if I'm alive\n"
-        "`!help` / `/help` — Show this menu"
+        "`!help` / `/help` — Show this menu \n"
+        "`!pfp <user>` — Show a user's profile picture \n"
     ), inline=False)
     embed.set_footer(text="ADAi — ADA University Discord bot")
     return embed
@@ -81,8 +82,19 @@ async def help_slash(interaction: discord.Interaction):
     await interaction.response.send_message(embed=build_help_embed())
 #---------------------------------------------------------
 
-
-
+#-------------------------PROFILE PICTURE------------------------------
+@bot.command()
+async def pfp(ctx, member: discord.Member = None):
+    if member is None:
+        member = ctx.author
+    
+    avatar_url = member.display_avatar.replace(size=1024).url
+    
+    embed = discord.Embed(title=f"{member.display_name}'s profile picture")
+    embed.set_image(url=avatar_url)
+    
+    await ctx.send(embed=embed)
+#---------------------------------------------------------
 
 #-------------------------QUOTE-----------------------------------
 @bot.command()
