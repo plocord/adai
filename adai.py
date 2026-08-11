@@ -303,10 +303,16 @@ async def clear_error(ctx, error):
 STATUSES = [
     "Registering for classes...",
     "!help",
+    "Serving coffee... ☕",
+    "!help",
+    "Flipping coins... 🪙",
+    "!help",
+    "Preparing for exams... 📚",
+    "!help"
 ]
 status_cycle = itertools.cycle(STATUSES)
 
-@tasks.loop(seconds=10)
+@tasks.loop(seconds=11) 
 async def rotate_status():
     next_status = next(status_cycle)
     await bot.change_presence(activity=discord.Game(name=next_status))
