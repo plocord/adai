@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 import os
 import random
 import asyncio
+from PIL import Image, ImageDraw, ImageFont
+import io
+import aiohttp
 
 load_dotenv()
 
@@ -94,7 +97,57 @@ async def quote(ctx):
         await ctx.send("That message has no text to quote!")
         return
     
-    await ctx.send(f'"{text}"\n— {author.display_name}')
+    # Download the author's avatar
+    avatar_url = author.display_avatar.replace(size=512).url
+    async with aiohttp.ClientSession() as session:
+        async with session.get(avatar_url) as resp:
+            avatar_bytes = await resp.read()
+    
+    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")  # grayscale
+    avatar = avatar.resize((400, 400))
+    
+    # Create canvas: avatar on left, black space with text on right
+    canvas = Image.new("RGB", (900, 400), color=(10, 10, 10))
+    canvas.paste(avatar, (0, 0))
+    
+    draw = ImageDraw.Draw(canvas)
+    
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+    except:
+        font = ImageFont.load_default()
+        small_font = font
+    
+    # Simple word-wrap for the quote text
+    def wrap_text(text, font, max_width, draw):
+        words = text.split()
+        lines = []
+        current = ""
+        for word in words:
+            test = f"{current} {word}".strip()
+            bbox = draw.textbbox((0, 0), test, font=font)
+            if bbox[2] - bbox[0] <= max_width:
+                current = test
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+        return lines
+    
+    lines = wrap_text(f'"{text}"', font, 440, draw)
+    y = 150 - (len(lines) * 20)
+    for line in lines:
+        draw.text((450, y), line, fill="white", font=font)
+        y += 40
+    
+    draw.text((450, y + 20), f"— {author.display_name}", fill=(180, 180, 180), font=small_font)
+    
+    buffer = io.BytesIO()
+    canvas.save(buffer, format="PNG")
+    buffer.seek(0)
+    
+    await ctx.send(file=discord.File(buffer, filename="quote.png"))
 #---------------------------------------------------------
 
 
