@@ -106,7 +106,7 @@ async def quote(ctx):
     avatar = avatar.resize((400, 400)).convert("RGB")
     
     # Build a horizontal fade mask: opaque on the left, transparent on the right
-    fade_width = 150  # how wide the fade transition is
+    fade_width = 300  # how wide the fade transition is
     mask = Image.new("L", (400, 400), 255)
     mask_draw = ImageDraw.Draw(mask)
     for x in range(400 - fade_width, 400):
