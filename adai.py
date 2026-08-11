@@ -78,6 +78,26 @@ async def help_slash(interaction: discord.Interaction):
 
 
 
+
+#-------------------------QUOTE-----------------------------------
+@bot.command()
+async def quote(ctx):
+    if ctx.message.reference is None:
+        await ctx.send("Reply to a message with `!quote` to turn it into a quote!")
+        return
+    
+    quoted_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+    text = quoted_msg.content
+    author = quoted_msg.author
+    
+    if not text:
+        await ctx.send("That message has no text to quote!")
+        return
+    
+    await ctx.send(f'"{text}"\n— {author.display_name}')
+#---------------------------------------------------------
+
+
 #-------------------------8BALL--------------------------------
 EIGHT_BALL_RESPONSES = [
     "It is certain.",
@@ -110,6 +130,8 @@ async def eightball(ctx, *, question=None):
 #---------------------------------------------------------
 
 
+
+
 #-----------------------RATE----------------------------------
 @bot.command()
 async def rate(ctx, *, thing=None):
@@ -119,6 +141,9 @@ async def rate(ctx, *, thing=None):
     score = random.randint(0, 10)
     await ctx.send(f"📊 **{ctx.author.display_name}** rated **{thing}**: **{score}/10**")
 #---------------------------------------------------------
+
+
+
 
 
 #-------------------------COINFLIP--------------------------------
