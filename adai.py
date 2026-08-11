@@ -301,14 +301,10 @@ async def clear_error(ctx, error):
 
 #-------------------------STATUS ROTATION-------------------------------
 STATUSES = [
-    "Registering for classes...",
-    "!help",
-    "Serving coffee... ☕",
-    "!help",
-    "Flipping coins... 🪙",
-    "!help",
-    "Preparing for exams... 📚",
-    "!help"
+    "Registering for classes... !help",
+    "Serving coffee... ☕ !help",
+    "Flipping coins... 🪙 !help",
+    "Preparing for exams... 📚 !help"
 ]
 status_cycle = itertools.cycle(STATUSES)
 
