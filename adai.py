@@ -12,7 +12,8 @@ import asyncio
 from PIL import Image, ImageDraw, ImageFont
 import io
 import aiohttp
-
+from discord.ext import tasks
+import itertools
 load_dotenv()
 
 intents = discord.Intents.default()
@@ -298,6 +299,19 @@ async def clear_error(ctx, error):
 
 #GUILD_ID = discord.Object(id=1411110776827019337)
 
+#-------------------------STATUS ROTATION-------------------------------
+STATUSES = [
+    "Registering for classes...",
+    "!help",
+]
+status_cycle = itertools.cycle(STATUSES)
+
+@tasks.loop(seconds=10)
+async def rotate_status():
+    next_status = next(status_cycle)
+    await bot.change_presence(activity=discord.Game(name=next_status))
+#---------------------------------------------------------
+
 
 #-------------------------READY--------------------------------
 @bot.event
@@ -308,5 +322,6 @@ async def on_ready():
         print(f"Synced {len(synced)} slash command(s) globally")
     except Exception as e:
         print(f"Sync failed: {e}")
+    rotate_status.start()
 bot.run(os.getenv("DISCORD_TOKEN"))
 #---------------------------------------------------------
