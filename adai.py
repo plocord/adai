@@ -16,6 +16,9 @@ from discord.ext import tasks
 import itertools
 import sqlite3
 from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+AZ_TZ = timezone(timedelta(hours=4))
 
 load_dotenv()
 
@@ -50,7 +53,7 @@ async def warn(ctx, member: discord.Member = None, *, reason=None):
     cursor = db.cursor()
     cursor.execute(
         "INSERT INTO warnings (user_id, moderator_id, reason, timestamp) VALUES (?, ?, ?, ?)",
-        (str(member.id), str(ctx.author.id), reason, str(datetime.utcnow()))
+        (str(member.id), str(ctx.author.id), reason, str(datetime.now(AZ_TZ)))
     )
     db.commit()
     
