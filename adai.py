@@ -97,6 +97,57 @@ async def warnings_error(ctx, error):
     else:
         await ctx.send(f"⚠️ Something went wrong: `{error}`")
         print(f"Warnings command error: {error}")
+
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def removewarning(ctx, member: discord.Member = None, index: int = None):
+    if member is None or index is None:
+        await ctx.send("Usage: `!removewarning @user <warning number>` — check numbers with `!warnings @user`")
+        return
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT id FROM warnings WHERE user_id = ? ORDER BY id", (str(member.id),))
+    rows = cursor.fetchall()
+    
+    if not rows or index < 1 or index > len(rows):
+        await ctx.send(f"Invalid warning number. {member.display_name} has {len(rows)} warning(s).")
+        return
+    
+    warning_id = rows[index - 1][0]
+    cursor.execute("DELETE FROM warnings WHERE id = ?", (warning_id,))
+    db.commit()
+    
+    await ctx.send(f"✅ Removed warning #{index} from **{member.display_name}**.")
+
+@removewarning.error
+async def removewarning_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Removewarning command error: {error}")
+
+
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def clearwarnings(ctx, member: discord.Member = None):
+    if member is None:
+        await ctx.send("Usage: `!clearwarnings @user`")
+        return
+    
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM warnings WHERE user_id = ?", (str(member.id),))
+    db.commit()
+    
+    await ctx.send(f"✅ Cleared all warnings for **{member.display_name}**.")
+
+@clearwarnings.error
+async def clearwarnings_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Clearwarnings command error: {error}")
 #---------------------------------------------------------
 
 
