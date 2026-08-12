@@ -51,6 +51,7 @@ def build_help_embed():
     embed.add_field(name="🛡️ Moderation", value=(
         "`!clear <amount>` — Delete messages (requires Manage Messages)\n"
         "`!warn @user <reason>` — Warn a user (!warnhelp for more info, requires Kick Members)\n"
+        "`!ban @user <reason>` — Ban a user (requires Ban Members)\n"
 
     ), inline=False)
     embed.add_field(name="⚙️ Utility", value=(
