@@ -2,7 +2,7 @@
 
 
 
-#---------------------------------------------------------
+#-------------------------START--------------------------------
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -14,7 +14,13 @@ import io
 import aiohttp
 from discord.ext import tasks
 import itertools
+import sqlite3
+
+
 load_dotenv()
+
+db = sqlite3.connect("adai.db")
+cursor = db.cursor()
 
 intents = discord.Intents.default()
 intents.members = True
@@ -32,6 +38,58 @@ SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
 #---------------------------------------------------------
 
 
+
+#-------------------------WARN---------------------------------
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def warn(ctx, member: discord.Member = None, *, reason=None):
+    if member is None or reason is None:
+        await ctx.send("Usage: `!warn @user reason`")
+        return
+    
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO warnings (user_id, moderator_id, reason, timestamp) VALUES (?, ?, ?, ?)",
+        (str(member.id), str(ctx.author.id), reason, str(datetime.utcnow()))
+    )
+    db.commit()
+    
+    await ctx.send(f"⚠️ **{member.display_name}** has been warned. Reason: {reason}")
+    try:
+        await member.send(f"You've been warned in **{ctx.guild.name}**. Reason: {reason}")
+    except discord.Forbidden:
+        pass
+
+@warn.error
+async def warn_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def warnings(ctx, member: discord.Member = None):
+    if member is None:
+        member = ctx.author
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT reason, timestamp FROM warnings WHERE user_id = ?", (str(member.id),))
+    rows = cursor.fetchall()
+    
+    if not rows:
+        await ctx.send(f"{member.display_name} has no warnings.")
+        return
+    
+    embed = discord.Embed(title=f"Warnings for {member.display_name}", color=discord.Color.orange())
+    for i, (reason, timestamp) in enumerate(rows, start=1):
+        embed.add_field(name=f"Warning #{i}", value=f"{reason}\n*{timestamp}*", inline=False)
+    
+    await ctx.send(embed=embed)
+
+@warnings.error
+async def warnings_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+#---------------------------------------------------------
 
 
 #-------------------------MEMBER UPDATE-------------------------------
