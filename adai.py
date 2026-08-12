@@ -31,6 +31,46 @@ intents.message_content = True   # add this line
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 #---------------------------------------------------------
 
+
+#-------------------------HELP---------------------------------
+def build_help_embed():
+    embed = discord.Embed(
+        title="ADAi Commands",
+        description="Here's everything I can do:",
+        color=discord.Color.blurple()
+    )
+    embed.add_field(name="🎉 Fun", value=(
+        "`!8ball <question>` — Ask the magic 8-ball\n"
+        "`!rate <thing>` — Get a rating out of 10\n"
+        "`!coffee` — Brew a virtual coffee\n"
+        "`!choose <a, b, c>` — Let the bot decide\n"
+        "`!coinflip` / `!cf` — Flip a coin \n"
+        "`!quote` — Turn a message into a quote (reply to a message with this command) \n"
+
+    ), inline=False)
+    embed.add_field(name="🛡️ Moderation", value=(
+        "`!clear <amount>` — Delete messages (requires Manage Messages)\n"
+        "`!warn @user <reason>` — Warn a user (!warnhelp for more info, requires Kick Members)\n"
+
+    ), inline=False)
+    embed.add_field(name="⚙️ Utility", value=(
+        "`!ping` — Check if I'm alive\n"
+        "`!help` / `/help` — Show this menu \n"
+        "`!pfp <user>` — Show a user's profile picture \n"
+    ), inline=False)
+    embed.set_footer(text="ADAi — ADA University Discord bot")
+    return embed
+
+@bot.command()
+async def help(ctx):
+    await ctx.send(embed=build_help_embed())
+
+@bot.tree.command(name="help", description="Show what ADAi can do")
+async def help_slash(interaction: discord.Interaction):
+    await interaction.response.send_message(embed=build_help_embed())
+#---------------------------------------------------------
+
+
 #-------------------------PING--------------------------------
 @bot.command()
 async def ping(ctx):
@@ -42,7 +82,89 @@ SCHOOL_ROLES = ["SITE", "SPIA", "Law", "SDA", "SAFS", "Business"]
 
 
 
+#-------------------------BAN--------------------------------
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member = None, *, reason=None):
+    if member is None:
+        await ctx.send("Usage: `!ban @user reason`")
+        return
+    
+    if reason is None:
+        reason = "No reason provided"
+    
+    try:
+        await member.send(f"You've been banned from **{ctx.guild.name}**. Reason: {reason}")
+    except discord.Forbidden:
+        pass  # DMs disabled, ignore
+    
+    await member.ban(reason=reason)
+    await ctx.send(f"🔨 **{member.display_name}** has been banned. Reason: {reason}")
+
+@ban.error
+async def ban_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Ban Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Ban command error: {error}")
+
+
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def unban(ctx, *, user_input=None):
+    if user_input is None:
+        await ctx.send("Usage: `!unban <user_id or username#0000>`")
+        return
+    
+    banned_users = [entry async for entry in ctx.guild.bans()]
+    
+    target = None
+    for ban_entry in banned_users:
+        user = ban_entry.user
+        if user_input.isdigit() and str(user.id) == user_input:
+            target = user
+            break
+        elif str(user) == user_input:  # matches "username#0000" or "username"
+            target = user
+            break
+    
+    if target is None:
+        await ctx.send("Couldn't find that user in the ban list.")
+        return
+    
+    await ctx.guild.unban(target)
+    await ctx.send(f"✅ **{target.name}** has been unbanned.")
+
+@unban.error
+async def unban_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the **Ban Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Unban command error: {error}")
+#---------------------------------------------------------
+
+
+
 #-------------------------WARN---------------------------------
+
+
+@bot.command()
+async def warnhelp(ctx):
+    embed = discord.Embed(
+        title="Warning System Commands",
+        description="All warning commands require the **Kick Members** permission.",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="!warn @user <reason>", value="Warn a user", inline=False)
+    embed.add_field(name="!warnings @user", value="Show a user's warning history", inline=False)
+    embed.add_field(name="!removewarning @user <number>", value="Remove a specific warning by its number", inline=False)
+    embed.add_field(name="!clearwarnings @user", value="Remove all warnings for a user", inline=False)
+    
+    await ctx.send(embed=embed)
+
+
 @bot.command()
 @commands.has_permissions(kick_members=True)
 async def warn(ctx, member: discord.Member = None, *, reason=None):
@@ -163,42 +285,6 @@ async def on_member_update(before, after):
             print(f"Removed {[r.name for r in roles_to_remove]} from {after.name}")
 #---------------------------------------------------------
 
-
-#-------------------------HELP---------------------------------
-def build_help_embed():
-    embed = discord.Embed(
-        title="ADAi Commands",
-        description="Here's everything I can do:",
-        color=discord.Color.blurple()
-    )
-    embed.add_field(name="🎉 Fun", value=(
-        "`!8ball <question>` — Ask the magic 8-ball\n"
-        "`!rate <thing>` — Get a rating out of 10\n"
-        "`!coffee` — Brew a virtual coffee\n"
-        "`!choose <a, b, c>` — Let the bot decide\n"
-        "`!coinflip` / `!cf` — Flip a coin \n"
-        "`!quote` — Turn a message into a quote (reply to a message with this command) \n"
-
-    ), inline=False)
-    embed.add_field(name="🛡️ Moderation", value=(
-        "`!clear <amount>` — Delete messages (requires Manage Messages)"
-    ), inline=False)
-    embed.add_field(name="⚙️ Utility", value=(
-        "`!ping` — Check if I'm alive\n"
-        "`!help` / `/help` — Show this menu \n"
-        "`!pfp <user>` — Show a user's profile picture \n"
-    ), inline=False)
-    embed.set_footer(text="ADAi — ADA University Discord bot")
-    return embed
-
-@bot.command()
-async def help(ctx):
-    await ctx.send(embed=build_help_embed())
-
-@bot.tree.command(name="help", description="Show what ADAi can do")
-async def help_slash(interaction: discord.Interaction):
-    await interaction.response.send_message(embed=build_help_embed())
-#---------------------------------------------------------
 
 #-------------------------PROFILE PICTURE------------------------------
 @bot.command()
