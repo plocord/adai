@@ -64,6 +64,9 @@ async def warn(ctx, member: discord.Member = None, *, reason=None):
 async def warn_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Warn command error: {error}")
 
 @bot.command()
 @commands.has_permissions(kick_members=True)
@@ -84,11 +87,13 @@ async def warnings(ctx, member: discord.Member = None):
         embed.add_field(name=f"Warning #{i}", value=f"{reason}\n*{timestamp}*", inline=False)
     
     await ctx.send(embed=embed)
-
 @warnings.error
 async def warnings_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ You need the **Kick Members** permission to use this command.")
+    else:
+        await ctx.send(f"⚠️ Something went wrong: `{error}`")
+        print(f"Warnings command error: {error}")
 #---------------------------------------------------------
 
 
