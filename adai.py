@@ -73,6 +73,35 @@ async def help_slash(interaction: discord.Interaction):
 #---------------------------------------------------------
 
 
+#-------------------------ON_MESSAGE---------------------------------
+SPECIAL_EMOJI_NAMES = ["<:wowsmirk:1534249981966422237>", "<:annoyedtt:1454861204924137503>", "<:lovelytt:1454861834048770150>", "<:eyerolltt:1454861117032497278>", "<:shy2tt:1454861777186586787>", "<:c_b_tiktok1complacent:1536682736209764422>"]
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    
+    if message.reference is not None:
+        try:
+            replied_msg = await message.channel.fetch_message(message.reference.message_id)
+            if replied_msg.author == bot.user:
+                answer = random.choice(EIGHT_BALL_RESPONSES)
+                
+                special_emojis = [
+                    e for e in message.guild.emojis if e.name in SPECIAL_EMOJI_NAMES
+                ] if message.guild else []
+                
+                emoji_pool = special_emojis if special_emojis else STANDARD_EMOJIS
+                random_emoji = random.choice(emoji_pool)
+                
+                await message.reply(f"{random_emoji} {answer}")
+                return
+        except discord.NotFound:
+            pass
+    
+    await bot.process_commands(message)
+#---------------------------------------------------------
+
 #-------------------------PING--------------------------------
 @bot.command()
 async def ping(ctx):
