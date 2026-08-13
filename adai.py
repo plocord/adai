@@ -338,7 +338,25 @@ EMOJI_CACHE = {}
 def get_twemoji_url(emoji_char):
     codepoints = "-".join(f"{ord(c):x}" for c in emoji_char if ord(c) != 0xFE0F)
     return f"https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/{codepoints}.png"
+CUSTOM_EMOJI_PATTERN = re.compile(r'<a?:(\w+):(\d+)>')
 
+async def fetch_custom_emoji_image(emoji_id, session):
+    cache_key = f"custom_{emoji_id}"
+    if cache_key in EMOJI_CACHE:
+        return EMOJI_CACHE[cache_key]
+    url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png"
+    try:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                data = await resp.read()
+                img = Image.open(io.BytesIO(data)).convert("RGBA")
+                EMOJI_CACHE[cache_key] = img
+                return img
+    except Exception:
+        pass
+    EMOJI_CACHE[cache_key] = None
+    return None
+    
 async def fetch_emoji_image(emoji_char, session):
     if emoji_char in EMOJI_CACHE:
         return EMOJI_CACHE[emoji_char]
@@ -356,7 +374,6 @@ async def fetch_emoji_image(emoji_char, session):
     return None
 
 def tokenize_with_emoji(text):
-    """Tokens are (kind, content, bold) where kind is 'word', 'emoji', or 'newline'."""
     tokens = []
     bold_parts = re.split(r'(\*\*.*?\*\*)', text)
     for part in bold_parts:
@@ -365,27 +382,45 @@ def tokenize_with_emoji(text):
         bold = part.startswith("**") and part.endswith("**")
         content = part[2:-2] if bold else part
         
-        pos = 0
-        matches = emoji_lib.emoji_list(content)
-        raw_runs = []
-        for m in matches:
-            if m['match_start'] > pos:
-                raw_runs.append(('rawtext', content[pos:m['match_start']]))
-            raw_runs.append(('emoji', m['emoji']))
-            pos = m['match_end']
-        if pos < len(content):
-            raw_runs.append(('rawtext', content[pos:]))
+        # First split out custom emoji tags
+        custom_split = CUSTOM_EMOJI_PATTERN.split(content)
+        # custom_split alternates: text, name, id, text, name, id, text...
         
-        for kind, chunk in raw_runs:
-            if kind == 'emoji':
-                tokens.append(('emoji', chunk, bold))
-            else:
-                for piece in re.split(r'(\n)', chunk):
-                    if piece == '\n':
-                        tokens.append(('newline', '\n', False))
-                    elif piece.strip():
-                        for word in piece.split():
-                            tokens.append(('word', word, bold))
+        i = 0
+        while i < len(custom_split):
+            chunk = custom_split[i]
+            if i + 2 < len(custom_split) and custom_split[i+1] and custom_split[i+2]:
+                pass  # handled below
+            
+            # regular text chunk — process for unicode emoji + words
+            matches = emoji_lib.emoji_list(chunk)
+            pos = 0
+            raw_runs = []
+            for m in matches:
+                if m['match_start'] > pos:
+                    raw_runs.append(('rawtext', chunk[pos:m['match_start']]))
+                raw_runs.append(('emoji', m['emoji']))
+                pos = m['match_end']
+            if pos < len(chunk):
+                raw_runs.append(('rawtext', chunk[pos:]))
+            
+            for kind, piece in raw_runs:
+                if kind == 'emoji':
+                    tokens.append(('emoji', piece, bold))
+                else:
+                    for sub in re.split(r'(\n)', piece):
+                        if sub == '\n':
+                            tokens.append(('newline', '\n', False))
+                        elif sub.strip():
+                            for word in sub.split():
+                                tokens.append(('word', word, bold))
+            
+            # if next two items exist, they're a custom emoji name+id pair
+            if i + 2 < len(custom_split):
+                emoji_id = custom_split[i + 2]
+                tokens.append(('customemoji', emoji_id, bold))
+            
+            i += 3
     return tokens
 
 def wrap_mixed_tokens(tokens, regular_font, bold_font, emoji_size, max_width, draw):
