@@ -303,6 +303,97 @@ async def pfp(ctx, member: discord.Member = None):
 #---------------------------------------------------------
 
 #-------------------------QUOTE-----------------------------------
+
+import emoji as emoji_lib
+
+EMOJI_CACHE = {}
+
+def get_twemoji_url(emoji_char):
+    codepoints = "-".join(f"{ord(c):x}" for c in emoji_char if ord(c) != 0xFE0F)
+    return f"https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/{codepoints}.png"
+
+async def fetch_emoji_image(emoji_char, session):
+    if emoji_char in EMOJI_CACHE:
+        return EMOJI_CACHE[emoji_char]
+    url = get_twemoji_url(emoji_char)
+    try:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                data = await resp.read()
+                img = Image.open(io.BytesIO(data)).convert("RGBA")
+                EMOJI_CACHE[emoji_char] = img
+                return img
+    except Exception:
+        pass
+    EMOJI_CACHE[emoji_char] = None
+    return None
+
+def tokenize_with_emoji(text):
+    """Tokens are (kind, content, bold) where kind is 'word', 'emoji', or 'newline'."""
+    tokens = []
+    bold_parts = re.split(r'(\*\*.*?\*\*)', text)
+    for part in bold_parts:
+        if not part:
+            continue
+        bold = part.startswith("**") and part.endswith("**")
+        content = part[2:-2] if bold else part
+        
+        pos = 0
+        matches = emoji_lib.emoji_list(content)
+        raw_runs = []
+        for m in matches:
+            if m['match_start'] > pos:
+                raw_runs.append(('rawtext', content[pos:m['match_start']]))
+            raw_runs.append(('emoji', m['emoji']))
+            pos = m['match_end']
+        if pos < len(content):
+            raw_runs.append(('rawtext', content[pos:]))
+        
+        for kind, chunk in raw_runs:
+            if kind == 'emoji':
+                tokens.append(('emoji', chunk, bold))
+            else:
+                for piece in re.split(r'(\n)', chunk):
+                    if piece == '\n':
+                        tokens.append(('newline', '\n', False))
+                    elif piece.strip():
+                        for word in piece.split():
+                            tokens.append(('word', word, bold))
+    return tokens
+
+def wrap_mixed_tokens(tokens, regular_font, bold_font, emoji_size, max_width, draw):
+    lines = []
+    current_line = []
+    current_width = 0
+    space_width = draw.textlength(" ", font=regular_font)
+    
+    for kind, content, bold in tokens:
+        if kind == 'newline':
+            lines.append(current_line)
+            current_line = []
+            current_width = 0
+            continue
+        
+        if kind == 'emoji':
+            token_width = emoji_size
+        else:
+            font = bold_font if bold else regular_font
+            token_width = draw.textlength(content, font=font)
+        
+        added_width = token_width if not current_line else token_width + space_width
+        
+        if current_width + added_width <= max_width or not current_line:
+            current_line.append((kind, content, bold))
+            current_width += added_width
+        else:
+            lines.append(current_line)
+            current_line = [(kind, content, bold)]
+            current_width = token_width
+    
+    if current_line:
+        lines.append(current_line)
+    return lines
+
 def parse_bold_tokens(text):
     """Split text into (word, is_bold) tokens based on **markdown**, preserving newlines."""
     parts = re.split(r'(\*\*.*?\*\*)', text)
@@ -360,6 +451,7 @@ VERTICAL_MARGIN = 30
 def fit_text_to_lines(text, font_path, bold_font_path, max_width, draw):
     available_height = CANVAS_HEIGHT - AUTHOR_BLOCK_HEIGHT - VERTICAL_MARGIN
     size = MAX_FONT_SIZE
+    tokens = tokenize_with_emoji(text)
     
     while size >= MIN_FONT_SIZE:
         regular_font = ImageFont.truetype(font_path, size)
@@ -367,18 +459,15 @@ def fit_text_to_lines(text, font_path, bold_font_path, max_width, draw):
         line_height = size + 10
         max_lines_that_fit = max(1, available_height // line_height)
         
-        tokens = parse_bold_tokens(text)
-        lines = wrap_tokens(tokens, regular_font, bold_font, max_width, draw)
+        lines = wrap_mixed_tokens(tokens, regular_font, bold_font, size, max_width, draw)
         
         if len(lines) <= max_lines_that_fit:
             return lines, regular_font, bold_font, size, line_height
         size -= 1
     
-    # hit minimum size and still doesn't fit — truncate with ellipsis as last resort
     line_height = MIN_FONT_SIZE + 10
     max_lines_that_fit = max(1, available_height // line_height)
     return lines[:max_lines_that_fit], regular_font, bold_font, MIN_FONT_SIZE, line_height
-    
 
 @bot.command()
 async def quote(ctx):
@@ -398,71 +487,82 @@ async def quote(ctx):
     async with aiohttp.ClientSession() as session:
         async with session.get(avatar_url) as resp:
             avatar_bytes = await resp.read()
-    
-    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")
-    avatar = avatar.resize((400, 400)).convert("RGB")
-    
-    fade_width = 150
-    mask = Image.new("L", (400, 400), 255)
-    mask_draw = ImageDraw.Draw(mask)
-    for x in range(400 - fade_width, 400):
-        opacity = int(255 * (1 - (x - (400 - fade_width)) / fade_width))
-        mask_draw.line([(x, 0), (x, 400)], fill=opacity)
-    
-    black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
-    faded_avatar = Image.composite(avatar, black_bg, mask)
-    
-    canvas = Image.new("RGB", (900, CANVAS_HEIGHT), color=(10, 10, 10))
-    canvas.paste(faded_avatar, (0, 0))
-    draw = ImageDraw.Draw(canvas)
-    
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    
-    lines, regular_font, bold_font, font_size, line_height = fit_text_to_lines(
-    f'"{text}"', font_path, bold_font_path, 400, draw
-    )
-
-    
-    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", max(14, font_size - 10))
-    handle_font = ImageFont.truetype(font_path, max(11, font_size - 14))
-    
-    line_height = font_size + 10
-    text_block_height = len(lines) * line_height
-    author_block_height = 55
-    
-    text_area_left = 450
-    text_area_right = 860
-    text_area_center = (text_area_left + text_area_right) // 2
-    space_width = draw.textlength(" ", font=regular_font)
-    
-    y = (CANVAS_HEIGHT - text_block_height - author_block_height) // 2
-    for line in lines:
-        line_width = sum(
-            draw.textlength(word, font=(bold_font if bold else regular_font)) + space_width
-            for word, bold in line
-        ) - space_width
         
-        x = text_area_center - (line_width / 2)
-        for word, bold in line:
-            font = bold_font if bold else regular_font
-            draw.text((x, y), word, fill="white", font=font)
-            x += draw.textlength(word, font=font) + space_width
-        y += line_height
-    
-    name_text = f"— {author.display_name}"
-    name_width = draw.textlength(name_text, font=italic_font)
-    draw.text((text_area_center - name_width / 2, y + 15), name_text, fill=(180, 180, 180), font=italic_font)
-    
-    handle_text = f"@{author.name}"
-    handle_width = draw.textlength(handle_text, font=handle_font)
-    draw.text((text_area_center - handle_width / 2, y + 40), handle_text, fill=(120, 120, 120), font=handle_font)
-    
-    buffer = io.BytesIO()
-    canvas.save(buffer, format="PNG")
-    buffer.seek(0)
-    
-    await ctx.send(file=discord.File(buffer, filename="quote.png"))
+        avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")
+        avatar = avatar.resize((400, 400)).convert("RGB")
+        
+        fade_width = 150
+        mask = Image.new("L", (400, 400), 255)
+        mask_draw = ImageDraw.Draw(mask)
+        for x in range(400 - fade_width, 400):
+            opacity = int(255 * (1 - (x - (400 - fade_width)) / fade_width))
+            mask_draw.line([(x, 0), (x, 400)], fill=opacity)
+        
+        black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
+        faded_avatar = Image.composite(avatar, black_bg, mask)
+        
+        canvas = Image.new("RGB", (900, CANVAS_HEIGHT), color=(10, 10, 10))
+        canvas.paste(faded_avatar, (0, 0))
+        draw = ImageDraw.Draw(canvas)
+        
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        
+        lines, regular_font, bold_font, font_size, line_height = fit_text_to_lines(
+            f'"{text}"', font_path, bold_font_path, 400, draw
+        )
+        
+        # fetch any emoji images needed for the final rendered lines
+        emoji_chars = {content for line in lines for kind, content, bold in line if kind == 'emoji'}
+        emoji_images = {}
+        for char in emoji_chars:
+            img = await fetch_emoji_image(char, session)
+            if img:
+                emoji_images[char] = img.resize((font_size, font_size))
+        
+        italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", max(14, font_size - 10))
+        handle_font = ImageFont.truetype(font_path, max(11, font_size - 14))
+        
+        text_block_height = len(lines) * line_height
+        author_block_height = 55
+        text_area_left = 450
+        text_area_right = 860
+        text_area_center = (text_area_left + text_area_right) // 2
+        space_width = draw.textlength(" ", font=regular_font)
+        
+        y = (CANVAS_HEIGHT - text_block_height - author_block_height) // 2
+        for line in lines:
+            line_width = 0
+            for kind, content, bold in line:
+                token_width = font_size if kind == "emoji" else draw.textlength(content, font=(bold_font if bold else regular_font))
+                line_width += token_width + space_width
+            line_width -= space_width
+            
+            x = text_area_center - (line_width / 2)
+            for kind, content, bold in line:
+                if kind == "emoji" and content in emoji_images:
+                    img = emoji_images[content]
+                    canvas.paste(img, (int(x), int(y)), img)
+                    x += font_size + space_width
+                else:
+                    font = bold_font if bold else regular_font
+                    draw.text((x, y), content, fill="white", font=font)
+                    x += draw.textlength(content, font=font) + space_width
+            y += line_height
+        
+        name_text = f"— {author.display_name}"
+        name_width = draw.textlength(name_text, font=italic_font)
+        draw.text((text_area_center - name_width / 2, y + 15), name_text, fill=(180, 180, 180), font=italic_font)
+        
+        handle_text = f"@{author.name}"
+        handle_width = draw.textlength(handle_text, font=handle_font)
+        draw.text((text_area_center - handle_width / 2, y + 40), handle_text, fill=(120, 120, 120), font=handle_font)
+        
+        buffer = io.BytesIO()
+        canvas.save(buffer, format="PNG")
+        buffer.seek(0)
+        
+        await ctx.send(file=discord.File(buffer, filename="quote.png"))
 #---------------------------------------------------------
 
 
