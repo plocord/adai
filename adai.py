@@ -81,7 +81,9 @@ async def on_message(message):
     if message.author == bot.user:
         return
     
-    if message.reference is not None:
+    is_command = message.content.startswith(bot.command_prefix)
+    
+    if message.reference is not None and not is_command:
         try:
             replied_msg = await message.channel.fetch_message(message.reference.message_id)
             if replied_msg.author == bot.user:
@@ -91,7 +93,7 @@ async def on_message(message):
                 ] if message.guild else []
                 emoji_pool = special_emojis if special_emojis else ["🎱"]
                 random_emoji = random.choice(emoji_pool)
-                await message.reply(f"{answer}"+" "+ f"{random_emoji}")
+                await message.reply(f"{random_emoji} {answer}")
                 return
         except discord.NotFound:
             pass
