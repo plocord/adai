@@ -352,6 +352,8 @@ def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
     return lines
 
 MAX_LINES = 10
+MAX_LINES = 7
+CANVAS_HEIGHT = 400
 
 @bot.command()
 async def quote(ctx):
@@ -385,55 +387,43 @@ async def quote(ctx):
     black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
     faded_avatar = Image.composite(avatar, black_bg, mask)
     
-    regular_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
-    bold_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
-    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", 20)
-    handle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+    regular_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
+    bold_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", 18)
+    handle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
     
-    dummy_canvas = Image.new("RGB", (900, 100))
-    dummy_draw = ImageDraw.Draw(dummy_canvas)
+    canvas = Image.new("RGB", (900, CANVAS_HEIGHT), color=(10, 10, 10))
+    canvas.paste(faded_avatar, (0, 0))
+    draw = ImageDraw.Draw(canvas)
     
     tokens = parse_bold_tokens(f'"{text}"')
-    lines = wrap_tokens(tokens, regular_font, bold_font, 400, dummy_draw)
+    lines = wrap_tokens(tokens, regular_font, bold_font, 400, draw)
     
-    truncated = False
-    if len(lines) > MAX_LINES:
+    truncated = len(lines) > MAX_LINES
+    if truncated:
         lines = lines[:MAX_LINES]
-        truncated = True
     
-    line_height = 40
+    line_height = 34
     text_block_height = len(lines) * line_height + (line_height if truncated else 0)
-    author_height = 60
-    top_margin = 60
-    bottom_margin = 40
-    
-    needed_height = top_margin + text_block_height + author_height + bottom_margin
-    canvas_height = max(400, needed_height)
-    
-    canvas = Image.new("RGB", (900, canvas_height), color=(10, 10, 10))
-    canvas.paste(faded_avatar, (0, 0))
-    
-    draw = ImageDraw.Draw(canvas)
+    author_block_height = 55
     
     text_area_left = 450
     text_area_right = 860
     text_area_center = (text_area_left + text_area_right) // 2
+    space_width = draw.textlength(" ", font=regular_font)
     
-    y = (canvas_height - text_block_height - author_height) // 2
+    y = (CANVAS_HEIGHT - text_block_height - author_block_height) // 2
     for line in lines:
-        # measure total line width for centering
-        line_width = 0
-        for i, (word, bold) in enumerate(line):
-            font = bold_font if bold else regular_font
-            line_width += draw.textlength(word, font=font)
-            if i < len(line) - 1:
-                line_width += space_width if (space_width := draw.textlength(" ", font=regular_font)) else 0
+        line_width = sum(
+            draw.textlength(word, font=(bold_font if bold else regular_font)) + space_width
+            for word, bold in line
+        ) - space_width
         
         x = text_area_center - (line_width / 2)
         for word, bold in line:
             font = bold_font if bold else regular_font
             draw.text((x, y), word, fill="white", font=font)
-            x += draw.textlength(word, font=font) + draw.textlength(" ", font=regular_font)
+            x += draw.textlength(word, font=font) + space_width
         y += line_height
     
     if truncated:
