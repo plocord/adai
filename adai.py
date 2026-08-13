@@ -303,9 +303,8 @@ async def pfp(ctx, member: discord.Member = None):
 #---------------------------------------------------------
 
 #-------------------------QUOTE-----------------------------------
-
 def parse_bold_tokens(text):
-    """Split text into (word, is_bold) tokens based on **markdown**."""
+    """Split text into (word, is_bold) tokens based on **markdown**, preserving newlines."""
     parts = re.split(r'(\*\*.*?\*\*)', text)
     tokens = []
     for part in parts:
@@ -313,19 +312,29 @@ def parse_bold_tokens(text):
             continue
         bold = part.startswith("**") and part.endswith("**")
         content = part[2:-2] if bold else part
-        for word in content.split():
-            if word:
-                tokens.append((word, bold))
+        # split on spaces only, keep \n as its own token
+        for chunk in re.split(r'(\n)', content):
+            if chunk == "\n":
+                tokens.append(("\n", False))
+            elif chunk.strip():
+                for word in chunk.split():
+                    tokens.append((word, bold))
     return tokens
 
 def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
-    """Wrap (word, is_bold) tokens into lines that fit max_width."""
+    """Wrap tokens into lines, respecting explicit newlines and width limits."""
     lines = []
     current_line = []
     current_width = 0
     space_width = draw.textlength(" ", font=regular_font)
     
     for word, bold in tokens:
+        if word == "\n":
+            lines.append(current_line)
+            current_line = []
+            current_width = 0
+            continue
+        
         font = bold_font if bold else regular_font
         word_width = draw.textlength(word, font=font)
         added_width = word_width if not current_line else word_width + space_width
@@ -341,6 +350,8 @@ def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
     if current_line:
         lines.append(current_line)
     return lines
+
+MAX_LINES = 10
 
 @bot.command()
 async def quote(ctx):
@@ -377,16 +388,22 @@ async def quote(ctx):
     regular_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
     bold_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
     italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", 20)
+    handle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
     
     dummy_canvas = Image.new("RGB", (900, 100))
     dummy_draw = ImageDraw.Draw(dummy_canvas)
     
     tokens = parse_bold_tokens(f'"{text}"')
-    lines = wrap_tokens(tokens, regular_font, bold_font, 440, dummy_draw)
+    lines = wrap_tokens(tokens, regular_font, bold_font, 400, dummy_draw)
+    
+    truncated = False
+    if len(lines) > MAX_LINES:
+        lines = lines[:MAX_LINES]
+        truncated = True
     
     line_height = 40
-    text_block_height = len(lines) * line_height
-    author_height = 50
+    text_block_height = len(lines) * line_height + (line_height if truncated else 0)
+    author_height = 60
     top_margin = 60
     bottom_margin = 40
     
@@ -398,16 +415,39 @@ async def quote(ctx):
     
     draw = ImageDraw.Draw(canvas)
     
+    text_area_left = 450
+    text_area_right = 860
+    text_area_center = (text_area_left + text_area_right) // 2
+    
     y = (canvas_height - text_block_height - author_height) // 2
     for line in lines:
-        x = 450
+        # measure total line width for centering
+        line_width = 0
+        for i, (word, bold) in enumerate(line):
+            font = bold_font if bold else regular_font
+            line_width += draw.textlength(word, font=font)
+            if i < len(line) - 1:
+                line_width += space_width if (space_width := draw.textlength(" ", font=regular_font)) else 0
+        
+        x = text_area_center - (line_width / 2)
         for word, bold in line:
             font = bold_font if bold else regular_font
             draw.text((x, y), word, fill="white", font=font)
-            x += draw.textlength(word, font=font) + draw.textlength(" ", font=font)
+            x += draw.textlength(word, font=font) + draw.textlength(" ", font=regular_font)
         y += line_height
     
-    draw.text((450, y + 20), f"— {author.display_name}", fill=(180, 180, 180), font=italic_font)
+    if truncated:
+        ellipsis_width = draw.textlength("...", font=regular_font)
+        draw.text((text_area_center - ellipsis_width / 2, y), "...", fill="white", font=regular_font)
+        y += line_height
+    
+    name_text = f"— {author.display_name}"
+    name_width = draw.textlength(name_text, font=italic_font)
+    draw.text((text_area_center - name_width / 2, y + 15), name_text, fill=(180, 180, 180), font=italic_font)
+    
+    handle_text = f"@{author.name}"
+    handle_width = draw.textlength(handle_text, font=handle_font)
+    draw.text((text_area_center - handle_width / 2, y + 40), handle_text, fill=(120, 120, 120), font=handle_font)
     
     buffer = io.BytesIO()
     canvas.save(buffer, format="PNG")
