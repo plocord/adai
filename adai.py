@@ -17,6 +17,7 @@ import itertools
 import sqlite3
 from datetime import datetime
 from datetime import datetime, timezone, timedelta
+import re
 
 AZ_TZ = timezone(timedelta(hours=4))
 
@@ -302,6 +303,45 @@ async def pfp(ctx, member: discord.Member = None):
 #---------------------------------------------------------
 
 #-------------------------QUOTE-----------------------------------
+
+def parse_bold_tokens(text):
+    """Split text into (word, is_bold) tokens based on **markdown**."""
+    parts = re.split(r'(\*\*.*?\*\*)', text)
+    tokens = []
+    for part in parts:
+        if not part:
+            continue
+        bold = part.startswith("**") and part.endswith("**")
+        content = part[2:-2] if bold else part
+        for word in content.split(" "):
+            if word:
+                tokens.append((word, bold))
+    return tokens
+
+def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
+    """Wrap (word, is_bold) tokens into lines that fit max_width."""
+    lines = []
+    current_line = []
+    current_width = 0
+    space_width = draw.textlength(" ", font=regular_font)
+    
+    for word, bold in tokens:
+        font = bold_font if bold else regular_font
+        word_width = draw.textlength(word, font=font)
+        added_width = word_width if not current_line else word_width + space_width
+        
+        if current_width + added_width <= max_width or not current_line:
+            current_line.append((word, bold))
+            current_width += added_width
+        else:
+            lines.append(current_line)
+            current_line = [(word, bold)]
+            current_width = word_width
+    
+    if current_line:
+        lines.append(current_line)
+    return lines
+
 @bot.command()
 async def quote(ctx):
     if ctx.message.reference is None:
@@ -324,47 +364,50 @@ async def quote(ctx):
     avatar = Image.open(io.BytesIO(avatar_bytes)).convert("L")
     avatar = avatar.resize((400, 400)).convert("RGB")
     
-    # Build a horizontal fade mask: opaque on the left, transparent on the right
-    fade_width = 300  # how wide the fade transition is
+    fade_width = 150
     mask = Image.new("L", (400, 400), 255)
     mask_draw = ImageDraw.Draw(mask)
     for x in range(400 - fade_width, 400):
         opacity = int(255 * (1 - (x - (400 - fade_width)) / fade_width))
         mask_draw.line([(x, 0), (x, 400)], fill=opacity)
     
-    canvas = Image.new("RGB", (900, 400), color=(10, 10, 10))
     black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
-    
-    # Composite avatar onto black using the fade mask
     faded_avatar = Image.composite(avatar, black_bg, mask)
+    
+    regular_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+    bold_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 32)
+    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", 20)
+    
+    dummy_canvas = Image.new("RGB", (900, 100))
+    dummy_draw = ImageDraw.Draw(dummy_canvas)
+    
+    tokens = parse_bold_tokens(f'"{text}"')
+    lines = wrap_tokens(tokens, regular_font, bold_font, 440, dummy_draw)
+    
+    line_height = 40
+    text_block_height = len(lines) * line_height
+    author_height = 50
+    top_margin = 60
+    bottom_margin = 40
+    
+    needed_height = top_margin + text_block_height + author_height + bottom_margin
+    canvas_height = max(400, needed_height)
+    
+    canvas = Image.new("RGB", (900, canvas_height), color=(10, 10, 10))
     canvas.paste(faded_avatar, (0, 0))
     
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
-    small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
     
-    def wrap_text(text, font, max_width, draw):
-        words = text.split()
-        lines = []
-        current = ""
-        for word in words:
-            test = f"{current} {word}".strip()
-            bbox = draw.textbbox((0, 0), test, font=font)
-            if bbox[2] - bbox[0] <= max_width:
-                current = test
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
-        return lines
-    
-    lines = wrap_text(f'"{text}"', font, 440, draw)
-    y = 150 - (len(lines) * 20)
+    y = (canvas_height - text_block_height - author_height) // 2
     for line in lines:
-        draw.text((450, y), line, fill="white", font=font)
-        y += 40
+        x = 450
+        for word, bold in line:
+            font = bold_font if bold else regular_font
+            draw.text((x, y), word, fill="white", font=font)
+            x += draw.textlength(word, font=font) + draw.textlength(" ", font=font)
+        y += line_height
     
-    draw.text((450, y + 20), f"— {author.display_name}", fill=(180, 180, 180), font=small_font)
+    draw.text((450, y + 20), f"— {author.display_name}", fill=(180, 180, 180), font=italic_font)
     
     buffer = io.BytesIO()
     canvas.save(buffer, format="PNG")
