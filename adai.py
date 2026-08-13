@@ -313,7 +313,7 @@ def parse_bold_tokens(text):
             continue
         bold = part.startswith("**") and part.endswith("**")
         content = part[2:-2] if bold else part
-        for word in content.split(" "):
+        for word in content.split():
             if word:
                 tokens.append((word, bold))
     return tokens
