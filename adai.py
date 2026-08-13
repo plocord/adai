@@ -351,9 +351,24 @@ def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
         lines.append(current_line)
     return lines
 
-MAX_LINES = 10
 MAX_LINES = 7
 CANVAS_HEIGHT = 400
+MAX_FONT_SIZE = 28
+MIN_FONT_SIZE = 14
+
+def fit_text_to_lines(text, font_path, bold_font_path, max_width, max_lines, draw):
+    """Try decreasing font sizes until the wrapped text fits within max_lines."""
+    size = MAX_FONT_SIZE
+    while size >= MIN_FONT_SIZE:
+        regular_font = ImageFont.truetype(font_path, size)
+        bold_font = ImageFont.truetype(bold_font_path, size)
+        tokens = parse_bold_tokens(text)
+        lines = wrap_tokens(tokens, regular_font, bold_font, max_width, draw)
+        if len(lines) <= max_lines:
+            return lines, regular_font, bold_font, size
+        size -= 2
+    # if even the smallest size doesn't fit, truncate as a last resort
+    return lines[:max_lines], regular_font, bold_font, size
 
 @bot.command()
 async def quote(ctx):
@@ -387,24 +402,22 @@ async def quote(ctx):
     black_bg = Image.new("RGB", (400, 400), color=(10, 10, 10))
     faded_avatar = Image.composite(avatar, black_bg, mask)
     
-    regular_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
-    bold_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
-    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", 18)
-    handle_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-    
     canvas = Image.new("RGB", (900, CANVAS_HEIGHT), color=(10, 10, 10))
     canvas.paste(faded_avatar, (0, 0))
     draw = ImageDraw.Draw(canvas)
     
-    tokens = parse_bold_tokens(f'"{text}"')
-    lines = wrap_tokens(tokens, regular_font, bold_font, 400, draw)
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     
-    truncated = len(lines) > MAX_LINES
-    if truncated:
-        lines = lines[:MAX_LINES]
+    lines, regular_font, bold_font, font_size = fit_text_to_lines(
+        f'"{text}"', font_path, bold_font_path, 400, MAX_LINES, draw
+    )
     
-    line_height = 34
-    text_block_height = len(lines) * line_height + (line_height if truncated else 0)
+    italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", max(14, font_size - 10))
+    handle_font = ImageFont.truetype(font_path, max(11, font_size - 14))
+    
+    line_height = font_size + 10
+    text_block_height = len(lines) * line_height
     author_block_height = 55
     
     text_area_left = 450
@@ -424,11 +437,6 @@ async def quote(ctx):
             font = bold_font if bold else regular_font
             draw.text((x, y), word, fill="white", font=font)
             x += draw.textlength(word, font=font) + space_width
-        y += line_height
-    
-    if truncated:
-        ellipsis_width = draw.textlength("...", font=regular_font)
-        draw.text((text_area_center - ellipsis_width / 2, y), "...", fill="white", font=regular_font)
         y += line_height
     
     name_text = f"— {author.display_name}"
