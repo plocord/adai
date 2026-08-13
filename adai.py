@@ -351,24 +351,34 @@ def wrap_tokens(tokens, regular_font, bold_font, max_width, draw):
         lines.append(current_line)
     return lines
 
-MAX_LINES = 7
 CANVAS_HEIGHT = 400
 MAX_FONT_SIZE = 28
-MIN_FONT_SIZE = 14
+MIN_FONT_SIZE = 12
+AUTHOR_BLOCK_HEIGHT = 55
+VERTICAL_MARGIN = 30
 
-def fit_text_to_lines(text, font_path, bold_font_path, max_width, max_lines, draw):
-    """Try decreasing font sizes until the wrapped text fits within max_lines."""
+def fit_text_to_lines(text, font_path, bold_font_path, max_width, draw):
+    available_height = CANVAS_HEIGHT - AUTHOR_BLOCK_HEIGHT - VERTICAL_MARGIN
     size = MAX_FONT_SIZE
+    
     while size >= MIN_FONT_SIZE:
         regular_font = ImageFont.truetype(font_path, size)
         bold_font = ImageFont.truetype(bold_font_path, size)
+        line_height = size + 10
+        max_lines_that_fit = max(1, available_height // line_height)
+        
         tokens = parse_bold_tokens(text)
         lines = wrap_tokens(tokens, regular_font, bold_font, max_width, draw)
-        if len(lines) <= max_lines:
-            return lines, regular_font, bold_font, size
-        size -= 2
-    # if even the smallest size doesn't fit, truncate as a last resort
-    return lines[:max_lines], regular_font, bold_font, size
+        
+        if len(lines) <= max_lines_that_fit:
+            return lines, regular_font, bold_font, size, line_height
+        size -= 1
+    
+    # hit minimum size and still doesn't fit — truncate with ellipsis as last resort
+    line_height = MIN_FONT_SIZE + 10
+    max_lines_that_fit = max(1, available_height // line_height)
+    return lines[:max_lines_that_fit], regular_font, bold_font, MIN_FONT_SIZE, line_height
+    
 
 @bot.command()
 async def quote(ctx):
@@ -409,9 +419,10 @@ async def quote(ctx):
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     bold_font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     
-    lines, regular_font, bold_font, font_size = fit_text_to_lines(
-        f'"{text}"', font_path, bold_font_path, 400, MAX_LINES, draw
+    lines, regular_font, bold_font, font_size, line_height = fit_text_to_lines(
+    f'"{text}"', font_path, bold_font_path, 400, draw
     )
+
     
     italic_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf", max(14, font_size - 10))
     handle_font = ImageFont.truetype(font_path, max(11, font_size - 14))
