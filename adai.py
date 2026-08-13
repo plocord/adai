@@ -91,7 +91,7 @@ async def on_message(message):
                     e for e in message.guild.emojis if e.name in SPECIAL_EMOJI_NAMES
                 ] if message.guild else []
                 
-                emoji_pool = special_emojis if special_emojis else STANDARD_EMOJIS
+                emoji_pool = special_emojis
                 random_emoji = random.choice(emoji_pool)
                 
                 await message.reply(f"{random_emoji} {answer}")
