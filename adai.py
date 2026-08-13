@@ -91,7 +91,7 @@ async def on_message(message):
                 ] if message.guild else []
                 emoji_pool = special_emojis if special_emojis else ["🎱"]
                 random_emoji = random.choice(emoji_pool)
-                await message.reply(f"{random_emoji} {answer}")
+                await message.reply(f"{answer}"+" "+ f"{random_emoji}")
                 return
         except discord.NotFound:
             pass
